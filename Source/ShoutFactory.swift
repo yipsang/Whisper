@@ -71,6 +71,18 @@ open class ShoutView: UIView {
     return gesture
     }()
 
+  public var index: Int {
+    get {
+        var selfIndex = 0
+        for (index, v) in shoutViews.enumerate() {
+            if v == self {
+                selfIndex = index
+            }
+        }
+        return selfIndex
+    }
+  }
+
   open fileprivate(set) var announcement: Announcement?
   open fileprivate(set) var displayTimer = Timer()
   open fileprivate(set) var panGestureActive = false
@@ -202,20 +214,9 @@ open class ShoutView: UIView {
   // MARK: - Actions
 
   public func silent() {
-    func getSelfIndex() -> Int {
-        var selfIndex = 0
-        for (index, v) in shoutViews.enumerate() {
-            if v == self {
-                selfIndex = index
-            }
-        }
-        
-        return selfIndex
-    }
-    
     UIView.animateWithDuration(0.35, animations: {
         for (index, v) in shoutViews.enumerate() {
-            if index > getSelfIndex() {
+            if index > self.index {
                 v.frame.origin.y -= self.frame.size.height
             }
         }
@@ -225,7 +226,7 @@ open class ShoutView: UIView {
         self.completion?()
         self.displayTimer.invalidate()
         self.removeFromSuperview()
-        shoutViews.removeAtIndex(getSelfIndex())
+        shoutViews.removeAtIndex(self.index)
     })
   }
 
@@ -248,6 +249,8 @@ open class ShoutView: UIView {
   
   @objc private func handlePanGestureRecognizer() {
     let translation = panGestureRecognizer.translation(in: self)
+    let originHeight = frame.size.height
+    var duration: NSTimeInterval = 0
 
     if panGestureRecognizer.state == .began {
       subtitleLabelOriginalHeight = subtitleLabel.bounds.size.height
@@ -280,6 +283,17 @@ open class ShoutView: UIView {
         }
       })
     }
+
+    UIView.animateWithDuration(duration, animations: {
+      self.backgroundView.frame.size.height = self.frame.height
+      self.gestureContainer.frame.origin.y = self.frame.height - 20
+      self.indicatorView.frame.origin.y = self.frame.height - Dimensions.indicatorHeight - 5
+      for (index, v) in shoutViews.enumerate() {
+        if index > self.index {
+            v.frame.origin.y += self.frame.size.height - originHeight
+        }
+      }
+    })
   }
 
 
