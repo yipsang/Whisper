@@ -1,16 +1,16 @@
 import UIKit
 
-let shoutView = ShoutView()
+var shoutViews = [ShoutView]()
 
 open class ShoutView: UIView {
 
   public struct Dimensions {
     public static let indicatorHeight: CGFloat = 6
-    public static let indicatorWidth: CGFloat = 50
-    public static let imageSize: CGFloat = 48
-    public static let imageOffset: CGFloat = 18
-    public static var textOffset: CGFloat = 75
-    public static var touchOffset: CGFloat = 40
+    public static let indicatorWidth: CGFloat = 30
+    public static let imageSize: CGFloat = 27
+    public static let imageOffset: CGFloat = 12
+    public static var height: CGFloat = UIApplication.sharedApplication().statusBarHidden ? 55 : 65
+    public static var textOffset: CGFloat = 47
   }
 
   open fileprivate(set) lazy var backgroundView: UIView = {
@@ -128,6 +128,7 @@ open class ShoutView: UIView {
     self.announcement = announcement
     imageView.image = announcement.image
     titleLabel.text = announcement.title
+    titleLabel.font = announcement.titleFont
     subtitleLabel.text = announcement.subtitle
 
     displayTimer.invalidate()
@@ -139,40 +140,46 @@ open class ShoutView: UIView {
 
   open func shout(to controller: UIViewController) {
     controller.view.addSubview(self)
-
-    frame.size.height = 0
-    UIView.animate(withDuration: 0.35, animations: {
-      self.frame.size.height = self.internalHeight + Dimensions.touchOffset
+    
+    frame = CGRect(x: 0, y: shoutViews.last?.frame.maxY ?? 0, width: width, height: 0)
+    backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: 0)
+    
+    UIView.animateWithDuration(0.35, animations: {
+        self.frame.size.height = Dimensions.height
+        self.backgroundView.frame.size.height = self.frame.height
     })
   }
 
   // MARK: - Setup
 
   public func setupFrames() {
-    internalHeight = (UIApplication.shared.isStatusBarHidden ? 55 : 65)
-
-    let totalWidth = UIScreen.main.bounds.width
-    let offset: CGFloat = UIApplication.shared.isStatusBarHidden ? 2.5 : 5
+    let totalWidth = UIScreen.mainScreen().bounds.width
+    let offset: CGFloat = UIApplication.sharedApplication().statusBarHidden || shoutViews.count > 0 ? 2.5 : 5
     let textOffsetX: CGFloat = imageView.image != nil ? Dimensions.textOffset : 18
     let imageSize: CGFloat = imageView.image != nil ? Dimensions.imageSize : 0
-
+    
     [titleLabel, subtitleLabel].forEach {
         $0.frame.size.width = totalWidth - imageSize - (Dimensions.imageOffset * 2)
         $0.sizeToFit()
     }
-
-    internalHeight += subtitleLabel.frame.height
-
-    imageView.frame = CGRect(x: Dimensions.imageOffset, y: (internalHeight - imageSize) / 2 + offset,
-      width: imageSize, height: imageSize)
-
+    
+    Dimensions.height += subtitleLabel.frame.height
+    
+    backgroundView.frame.size = CGSize(width: totalWidth, height: Dimensions.height)
+    gestureContainer.frame = backgroundView.frame
+    indicatorView.frame = CGRect(x: (totalWidth - Dimensions.indicatorWidth) / 2,
+                                 y: Dimensions.height - Dimensions.indicatorHeight - 5, width: Dimensions.indicatorWidth, height: Dimensions.indicatorHeight)
+    
+    imageView.frame = CGRect(x: Dimensions.imageOffset, y: (Dimensions.height - imageSize) / 2 + offset,
+                             width: imageSize, height: imageSize)
+    
     let textOffsetY = imageView.image != nil ? imageView.frame.origin.x + 3 : textOffsetX + 5
-
+    
     titleLabel.frame.origin = CGPoint(x: textOffsetX, y: textOffsetY)
     subtitleLabel.frame.origin = CGPoint(x: textOffsetX, y: titleLabel.frame.maxY + 2.5)
-
+    
     if subtitleLabel.text?.isEmpty ?? true {
-      titleLabel.center.y = imageView.center.y - 2.5
+        titleLabel.center.y = imageView.center.y
     }
 
     frame = CGRect(x: 0, y: 0, width: totalWidth, height: internalHeight + Dimensions.touchOffset)
@@ -195,13 +202,31 @@ open class ShoutView: UIView {
 
   // MARK: - Actions
 
-  open func silent() {
-    UIView.animate(withDuration: 0.35, animations: {
-      self.frame.size.height = 0
-      }, completion: { finished in
+  public func silent() {
+    func getSelfIndex() -> Int {
+        var selfIndex = 0
+        for (index, v) in shoutViews.enumerate() {
+            if v == self {
+                selfIndex = index
+            }
+        }
+        
+        return selfIndex
+    }
+    
+    UIView.animateWithDuration(0.35, animations: {
+        for (index, v) in shoutViews.enumerate() {
+            if index > getSelfIndex() {
+                v.frame.origin.y -= self.frame.size.height
+            }
+        }
+        self.frame.size.height = 0
+        self.backgroundView.frame.size.height = self.frame.height
+    }, completion: { finished in
         self.completion?()
         self.displayTimer.invalidate()
         self.removeFromSuperview()
+        shoutViews.removeAtIndex(getSelfIndex())
     })
   }
 

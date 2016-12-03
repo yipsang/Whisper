@@ -5,7 +5,9 @@ public func show(whisper message: Message, to: UINavigationController, action: W
 }
 
 public func show(shout announcement: Announcement, to: UIViewController, completion: (() -> Void)? = nil) {
+  let shoutView = ShoutView()
   shoutView.craft(announcement, to: to, completion: completion)
+  shoutViews.append(shoutView)
 }
 
 public func show(whistle murmur: Murmur, action: WhistleAction = .show(1.5)) {
